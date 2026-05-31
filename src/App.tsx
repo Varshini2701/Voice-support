@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { VoiceAssistant } from './components/VoiceAssistant';
 import { Dashboard } from './components/Dashboard';
 import type { Sentiment, Department } from './utils/SentimentEngine';
+import type { Ticket } from './types/Ticket';
 
 function App() {
   const [state, setState] = useState({
@@ -10,15 +11,36 @@ function App() {
     language: 'English',
     isOnTrack: true
   });
+  const [tickets, setTickets] = useState<Ticket[]>([]);
 
   const handleUpdate = (newData: any) => {
     setState((prev: any) => ({ ...prev, ...newData }));
   };
 
+  const handleTicketCreated = (newTicket: Ticket) => {
+    setTickets(prev => [newTicket, ...prev]);
+  };
+
+  const handleResolveTicket = (ticketId: string, duration: number) => {
+    setTickets(prev => prev.map(tkt => {
+      if (tkt.id === ticketId) {
+        return {
+          ...tkt,
+          status: 'Resolved' as const,
+          resolutionTime: duration
+        };
+      }
+      return tkt;
+    }));
+  };
+
   return (
     <div className="app-container">
       <main>
-        <VoiceAssistant onUpdate={handleUpdate} />
+        <VoiceAssistant 
+          onUpdate={handleUpdate} 
+          onTicketCreated={handleTicketCreated}
+        />
         
         <div className="glass-card" style={{ marginTop: '2rem' }}>
           <h3>Process Overview</h3>
@@ -47,9 +69,12 @@ function App() {
         currentDept={state.department}
         language={state.language}
         isOnTrack={state.isOnTrack}
+        tickets={tickets}
+        onResolveTicket={handleResolveTicket}
       />
     </div>
   );
 }
 
 export default App;
+

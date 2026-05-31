@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useSpeech } from '../hooks/useSpeech';
 import type { Sentiment, Department } from '../utils/SentimentEngine';
 import { analyzeTranscript, getResponseTemplate } from '../utils/SentimentEngine';
+import type { Ticket } from '../types/Ticket';
 
 interface VoiceAssistantProps {
   onUpdate: (data: { sentiment: Sentiment, department: Department, language: string, isOnTrack: boolean }) => void;
+  onTicketCreated: (ticket: Ticket) => void;
 }
 
 interface ChatMessage {
@@ -25,7 +27,7 @@ const PRESET_QUERIES = [
   { text: "Hallo, ich möchte eine neue Lizenz kaufen", label: "🇩🇪 Sales (DE)" },
 ];
 
-export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onUpdate }) => {
+export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onUpdate, onTicketCreated }) => {
   const { isListening, isSpeaking, transcript, error, startListening, speak, setTranscript } = useSpeech();
   const [displayText, setDisplayText] = useState('Click "Start Query" or select a preset to begin...');
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
@@ -69,6 +71,37 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onUpdate }) => {
     setChatLog(prev => [customerMsg, aiMsg, ...prev]);
     setDisplayText(response);
     speak(response, result.langCode);
+
+    // Map Agent
+    let agent = "System Triage Bot";
+    if (result.department === 'Technical') agent = "Tech Agent Alex";
+    else if (result.department === 'Billing') agent = "Billing Agent Clara";
+    else if (result.department === 'Sales') agent = "Sales Agent Marcus";
+    else if (result.department === 'Support') agent = "Support Agent Ryan";
+    else if (result.department === 'Senior Manager') agent = "Senior Manager Sarah";
+
+    // Map Priority
+    let priority: 'Low' | 'Medium' | 'High' | 'Critical' = 'Medium';
+    if (result.sentiment === 'angry') priority = 'Critical';
+    else if (result.sentiment === 'unsatisfied') priority = 'High';
+
+    // Map Status
+    const status = result.sentiment === 'angry' ? 'Escalated' : 'Open';
+
+    // Create a new support ticket
+    const ticket: Ticket = {
+      id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
+      description: textInput,
+      department: result.department,
+      assignedAgent: agent,
+      sentiment: result.sentiment,
+      priority,
+      status,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      startTime: Date.now()
+    };
+
+    onTicketCreated(ticket);
   };
 
   const handlePresetClick = (text: string) => {
